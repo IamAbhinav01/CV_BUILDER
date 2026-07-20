@@ -19,7 +19,14 @@ function runLatexmk(dir) {
       'doc.tex',
     ];
 
-    const child = spawn('latexmk', args, { cwd: dir });
+    const child = spawn('latexmk', args, { 
+      cwd: dir,
+      env: { 
+        ...process.env, 
+        openin_any: 'p', 
+        openout_any: 'p' 
+      }
+    });
 
     let stdout = '';
     let stderr = '';
