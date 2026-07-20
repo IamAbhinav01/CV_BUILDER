@@ -1,6 +1,7 @@
 FROM minidocks/texlive:2023-medium
 
 RUN tlmgr install \
+      latexmk \
       preprint \
       titlesec \
       marvosym \

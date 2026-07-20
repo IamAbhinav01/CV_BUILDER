@@ -3,6 +3,7 @@ const fs = require('fs/promises');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const logger = require('../config/logger.config');
 
 const COMPILE_TIMEOUT_MS = 15000; // 15 seconds timeout
 const MAX_LOG_CHARS = 20000;
@@ -19,13 +20,13 @@ function runLatexmk(dir) {
       'doc.tex',
     ];
 
-    const child = spawn('latexmk', args, { 
+    const child = spawn('latexmk', args, {
       cwd: dir,
-      env: { 
-        ...process.env, 
-        openin_any: 'p', 
-        openout_any: 'p' 
-      }
+      env: {
+        ...process.env,
+        openin_any: 'p',
+        openout_any: 'p',
+      },
     });
 
     let stdout = '';
@@ -49,7 +50,10 @@ function runLatexmk(dir) {
         .catch(() => false);
 
       if (killedForTimeout) {
-        resolve({ ok: false, log: 'Compilation timed out (possible infinite loop or very heavy document).' });
+        resolve({
+          ok: false,
+          log: 'Compilation timed out (possible infinite loop or very heavy document).',
+        });
         return;
       }
 
@@ -95,18 +99,19 @@ class LatexService {
 
     try {
       await fs.writeFile(path.join(dir, 'doc.tex'), texPayload, 'utf8');
-      
+
       const compileResult = await runLatexmk(dir);
-      
+
       if (compileResult.ok) {
         const pdfBuffer = await fs.readFile(compileResult.pdfPath);
+        logger.info('Successfully served t service layer');
         return { success: true, pdfBuffer };
       } else {
         const errors = extractErrors(compileResult.log);
         return { success: false, log: compileResult.log, errors };
       }
     } catch (err) {
-      console.log('Error occured in service layer : ', err);
+      logger.error('Error occured in service layer : ', err);
       throw new Error(err.message);
     } finally {
       // Best-effort cleanup

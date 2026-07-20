@@ -1,0 +1,13 @@
+[2026-07-20 11:30:04.446 +0530] INFO: server running on port : 3000
+[2026-07-20 11:30:12.184 +0530] INFO: server running on port : 3000
+[2026-07-20 11:31:00.436 +0530] INFO: server running on port : 3000
+[2026-07-20 11:32:12.971 +0530] INFO: server running on port : 3000
+[2026-07-20 11:32:55.246 +0530] INFO: server running on port : 3000
+[2026-07-20 11:33:14.963 +0530] INFO: server running on port : 3000
+[2026-07-20 11:33:18.332 +0530] INFO: request reached handler
+[2026-07-20 11:33:18.363 +0530] INFO: request sent to service
+[2026-07-20 11:33:18.363 +0530] ERROR: ibalid respone from controleer
+[2026-07-20 11:33:52.577 +0530] INFO: server running on port : 3000
+[2026-07-20 11:33:57.695 +0530] INFO: request reached handler
+[2026-07-20 11:33:57.714 +0530] INFO: request sent to service
+[2026-07-20 11:33:57.715 +0530] ERROR: invalid respone from controleer
