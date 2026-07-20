@@ -4,7 +4,8 @@
   "description": "! after pulling this image , now install what all things are there inside the dockerfile.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npx nodemon src/index.js"
   },
   "repository": {
     "type": "git",
