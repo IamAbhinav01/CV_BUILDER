@@ -1,6 +1,6 @@
-# CV Builder - LaTeX Compilation Service
+# CV Builder - LaTeX Compilation Microservice
 
-A scalable, containerized Node.js microservice designed to compile raw LaTeX source code (`.tex`) into PDF documents (`.pdf`) securely on the fly.
+A scalable, containerized Node.js microservice designed to compile raw LaTeX source code (`.tex`) into PDF documents (`.pdf`) securely on the fly. It natively supports advanced resume templates (like Awesome CV and Deedy CV) and provides AI-ready endpoints for automated CV generation.
 
 ## 🏗️ Architecture
 
@@ -11,48 +11,45 @@ src/
 ├── config/
 │   └── server.config.js       # Environment configuration and PORT settings
 ├── controller/
-│   └── latex.controller.js    # Handles HTTP requests, payload validation, and HTTP responses
+│   ├── latex.controller.js    # Handles compilation HTTP requests and dynamic compiler inference
+│   └── template.controller.js # Exposes CV templates and handles sub-file concatenation for LLMs
 ├── router/
-│   └── latex.router.js        # Maps API routes to their respective controllers
+│   ├── latex.router.js        # Maps compilation API routes
+│   └── template.router.js     # Maps template discovery API routes
 ├── service/
-│   └── latex.service.js       # Core business logic: file system operations and child processes
+│   └── latex.service.js       # Core logic: isolated workspaces, fs operations, child processes
+├── templates/                 # Pre-configured premium CV templates (Awesome CV, Deedy, etc.)
 └── index.js                   # Application entry point: wires up Express, CORS, and routers
 ```
 
-### 1. Controllers (`latex.controller.js`)
-
-Acts as the middleman. It intercepts incoming HTTP requests, validates the size and type of the `tex` payload (e.g., ensuring it doesn't exceed 2MB), and offloads the heavy lifting to the Service layer. Once the Service layer finishes, the controller formats the success/failure response back to the client.
+### 1. Controllers
+Acts as the middleman. 
+* `LatexController` intercepts incoming compilation requests, validates the `tex` payload, automatically infers the correct LaTeX engine (`xelatex`, `pdflatex`, etc.) based on the template, and formats the success/failure response back to the client.
+* `TemplateController` serves available templates to the frontend/LLM. Crucially, it provides a `/full` endpoint that parses LaTeX `\input{}` macros and inlines sub-files to provide a single, comprehensive string for AI manipulation.
 
 ### 2. Services (`latex.service.js`)
-
-Handles the actual business logic. It generates a unique `jobID`, creates an isolated temporary directory in the OS, writes the LaTeX string to `doc.tex`, and spawns a secure `latexmk` child process. It then parses the PDF buffer on success or extracts the relevant LaTeX `.log` errors on failure. Finally, it forcefully cleans up the temporary directory to prevent memory leaks.
-
-### 3. Routers (`latex.router.js`)
-
-Provides modular API endpoints (e.g. `/api/compile`) to organize routes without cluttering the main index file.
+Handles the actual business logic. It generates a unique `jobID`, creates an isolated temporary directory in the OS, copies required template assets (fonts, classes), writes the LaTeX string to `doc.tex`, and spawns a secure LaTeX compiler child process. It forcefully cleans up the temporary directory upon completion to prevent memory leaks.
 
 ---
 
 ## 🔄 End-to-End Flow
 
-1. **Client Request**: The client sends a `POST /api/compile` request with a JSON body containing the raw `tex` string.
-2. **Express Validation**: The Express app parses the body (configured to allow up to `5mb`).
-3. **Controller Interception**: `LatexController` intercepts the request. If the `tex` string is missing or exceeds `2,000,000` characters, it immediately rejects the request with a `400` or `413` status.
-4. **Service Execution**:
+1. **AI / Client Request**: The client requests a master template string via `GET /api/templates/:id/full`. The backend recursively inlines all `\input{}` dependencies into one string.
+2. **AI Modification**: The LLM edits the text content inside the master string and sends it back via `POST /api/compile`.
+3. **Service Execution**:
    - `LatexService` creates a temporary directory `/tmp/latex-jobs/<UUID>/`.
-   - The `tex` string is saved as `doc.tex`.
-   - A Node.js `child_process` spawns `latexmk` with strict security flags (`-interaction=nonstopmode`, `-no-shell-escape`, `-halt-on-error`).
-   - A `30,000ms` (30 second) timeout timer begins. If compilation exceeds this, the process is `SIGKILL`'d to prevent infinite loops.
-5. **Compilation Result**:
+   - The required assets from `src/templates/<templateId>` (like fonts, `.cls` files) are securely copied into the temporary job workspace.
+   - A Node.js `child_process` spawns the correct engine with strict security flags (`-interaction=nonstopmode`, `-no-shell-escape`, `-halt-on-error`).
+4. **Compilation Result**:
    - **Success**: The service reads `doc.pdf` into a Buffer and returns it. The Controller sends it back to the client with a `Content-Type: application/pdf` header.
-   - **Failure**: The service reads `doc.log`, extracts the first 10 human-readable errors using Regex, and returns them. The Controller sends a `422 Unprocessable Entity` JSON response.
-6. **Cleanup**: Regardless of success or failure, the `finally` block in the service forcefully deletes the temporary `/tmp/latex-jobs/<UUID>/` directory.
+   - **Failure**: The service extracts the raw `.log` file and parses human-readable errors using Regex, returning a `422 Unprocessable Entity` JSON response for the LLM to auto-correct.
+5. **Cleanup**: Regardless of success or failure, the service forcefully deletes the temporary directory.
 
 ---
 
 ## 🐳 Docker Deployment
 
-The application is fully containerized using a lightweight TeX Live image (`minidocks/texlive:2023-medium`), which includes `pdflatex` and `latexmk`.
+The application is heavily containerized using a TeX Live image (`minidocks/texlive:2023-medium`). The `Dockerfile` has been heavily customized to pre-install dependencies (`fontawesome5`, `fontconfig`, `tikzfill`, etc.) required by complex templates.
 
 ### Build the Image
 
@@ -66,34 +63,55 @@ docker build -t cv-builder-service .
 docker run -p 3000:3000 cv-builder-service
 ```
 
-_(The server will be available at `http://localhost:3000`)_
-
 ---
 
 ## 🚀 API Reference
 
 ### 1. Health Check
-
 **Endpoint**: `GET /api/health`
-
 **Response**: `200 OK`
+```json
+{ "ok": true }
+```
 
+---
+
+### 2. List Templates
+**Endpoint**: `GET /api/templates`
+Returns a list of all available template IDs installed in the system.
+**Response**: `200 OK`
 ```json
 {
-  "ok": true
+  "success": true,
+  "templates": ["Awesome_CV__3_", "Deedy_CV__1_", "Jake_s_Resume"]
 }
 ```
 
-### 2. Compile LaTeX
+---
 
+### 3. Get AI-Ready Template (Concatenated)
+**Endpoint**: `GET /api/templates/:id/full`
+Returns a single, massive LaTeX string with all `\input{...}` macros resolved and injected. **Perfect for LLM context windows.**
+**Response**: `200 OK`
+```json
+{
+  "success": true,
+  "templateId": "Awesome_CV__3_",
+  "tex": "\\documentclass{awesome-cv} ... [all inputs resolved inline] ... \\end{document}"
+}
+```
+
+---
+
+### 4. Compile LaTeX
 **Endpoint**: `POST /api/compile`
 **Headers**: `Content-Type: application/json`
 
 **Body**:
-
 ```json
 {
-  "tex": "\\documentclass{article}\\begin{document}Hello World!\\end{document}"
+  "templateId": "Awesome_CV__3_",
+  "tex": "\\documentclass{awesome-cv}...\\end{document}"
 }
 ```
 
@@ -101,24 +119,16 @@ _(The server will be available at `http://localhost:3000`)_
 Returns raw binary `application/pdf` data.
 
 **Error Response (422 Unprocessable Entity)**:
-
 ```json
 {
   "ok": false,
-  "log": "... raw log output ...",
+  "log": "... raw LaTeX log output ...",
   "errors": [
     {
-      "file": "./doc.tex",
-      "line": 12,
-      "message": "Undefined control sequence."
+      "file": "./awesome-cv.cls",
+      "line": 166,
+      "message": "LaTeX cmd Error: Command '\\FA' already defined."
     }
   ]
 }
-
-# 1. Build the image (bundles Node + LaTeX + Your Code)
-docker build -t cv-builder-service .
-
-# 2. Run the container (starts the server on port 3000)
-docker run -p 3000:3000 cv-builder-service
-
 ```

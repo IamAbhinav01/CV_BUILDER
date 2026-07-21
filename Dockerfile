@@ -29,12 +29,19 @@ RUN tlmgr install \
       lato \
       pdfx \
       fontaxes \
-      fontawesome5
+      fontawesome5 \
+      textpos \
+      isodate \
+      substr
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
 
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache nodejs npm fontconfig && \
+    mkdir -p /usr/share/fonts/texlive && \
+    ln -s /usr/local/texlive/texmf-dist/fonts/opentype /usr/share/fonts/texlive/opentype && \
+    ln -s /usr/local/texlive/texmf-dist/fonts/truetype /usr/share/fonts/texlive/truetype && \
+    fc-cache -fv
 
 WORKDIR /app
 COPY package*.json ./
