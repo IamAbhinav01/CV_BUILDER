@@ -23,7 +23,13 @@ RUN tlmgr install \
       ragged2e \
       geometry \
       xcolor \
-      hyperref
+      hyperref \
+      tikzfill \
+      moderncv \
+      lato \
+      pdfx \
+      fontaxes \
+      fontawesome5
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
