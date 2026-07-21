@@ -79,11 +79,34 @@ class TemplateController {
       let mainTexPath = null;
       let mainContent = '';
 
+      // Priority list for main file names
+      const priorityNames = ['resume.tex', 'cv.tex', 'main.tex', 'sample.tex'];
+      
+      let candidateFiles = [];
       for (const dirent of dirents) {
         if (!dirent.isDirectory() && dirent.name.endsWith('.tex')) {
-          const content = await fs.readFile(path.join(templatePath, dirent.name), 'utf8');
+          candidateFiles.push(dirent.name);
+        }
+      }
+
+      // Find the first priority file that exists
+      let selectedFile = null;
+      for (const pName of priorityNames) {
+        if (candidateFiles.includes(pName)) {
+          selectedFile = pName;
+          break;
+        }
+      }
+
+      // Fallback: look for \documentclass in any .tex file
+      if (selectedFile) {
+        mainTexPath = path.join(templatePath, selectedFile);
+        mainContent = await fs.readFile(mainTexPath, 'utf8');
+      } else {
+        for (const file of candidateFiles) {
+          const content = await fs.readFile(path.join(templatePath, file), 'utf8');
           if (content.includes('\\documentclass')) {
-            mainTexPath = path.join(templatePath, dirent.name);
+            mainTexPath = path.join(templatePath, file);
             mainContent = content;
             break;
           }
