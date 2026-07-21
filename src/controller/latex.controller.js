@@ -3,7 +3,17 @@ const latexService = require('../service/latex.service');
 
 class LatexController {
   async compile(req, res) {
-    const { tex, extraFiles, engine, templateId } = req.body || {};
+    let { tex, extraFiles, engine, templateId } = req.body || {};
+
+    if (!engine && templateId) {
+      if (templateId.includes('Awesome_CV') || templateId.includes('Deedy_CV') || templateId.includes('PlushCV')) {
+        engine = 'xelatex';
+      } else if (templateId.includes('AltaCV')) {
+        engine = 'lualatex';
+      } else {
+        engine = 'pdflatex';
+      }
+    }
 
     if (typeof tex !== 'string' || tex.trim().length === 0) {
       return res
