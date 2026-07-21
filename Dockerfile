@@ -32,7 +32,21 @@ RUN tlmgr install \
       fontawesome5 \
       textpos \
       isodate \
-      substr
+      substr \
+      xmpincl \
+      paracol \
+      roboto \
+      simpleicons \
+      academicons \
+      cmap \
+      accsupp \
+      dashrule \
+      multirow \
+      adjustbox \
+      collectbox \
+      biber \
+      biblatex \
+      csquotes
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
