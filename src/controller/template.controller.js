@@ -96,37 +96,41 @@ class TemplateController {
 
       // 2. Recursively resolve \input{} tags
       const resolveInputs = async (content, baseDir) => {
-        const inputRegex = /\\input{([^}]+)}/g;
-        let match;
-        // Need to evaluate asynchronously so we extract matches first
-        let matches = [];
-        while ((match = inputRegex.exec(content)) !== null) {
-          matches.push({ full: match[0], filename: match[1] });
-        }
-
-        let resolvedContent = content;
-        for (const m of matches) {
-          let inputFileName = m.filename;
-          if (!inputFileName.endsWith('.tex')) {
-            inputFileName += '.tex';
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          // Skip commented lines
+          if (line.trim().startsWith('%')) {
+            continue;
           }
           
-          const inputFilePath = path.join(baseDir, inputFileName);
-          try {
-            const inputContent = await fs.readFile(inputFilePath, 'utf8');
-            // Recursively resolve inputs inside the input file
-            const resolvedInputContent = await resolveInputs(inputContent, path.dirname(inputFilePath));
+          const inputRegex = /\\input{([^}]+)}/g;
+          let match;
+          while ((match = inputRegex.exec(line)) !== null) {
+            // Check if there is a % before this match on this line
+            const beforeMatch = line.substring(0, match.index);
+            if (beforeMatch.includes('%')) {
+              continue;
+            }
+
+            let inputFileName = match[1];
+            if (!inputFileName.endsWith('.tex')) {
+              inputFileName += '.tex';
+            }
             
-            // Add a comment to help LLM understand context (optional but helpful)
-            const wrappedContent = `\n% --- START OF ${m.filename} ---\n${resolvedInputContent}\n% --- END OF ${m.filename} ---\n`;
-            
-            resolvedContent = resolvedContent.replace(m.full, wrappedContent);
-          } catch (err) {
-            console.error(`Could not resolve input file: ${inputFilePath}`);
-            // If file not found, just leave the \input tag intact
+            const inputFilePath = path.join(baseDir, inputFileName);
+            try {
+              const inputContent = await fs.readFile(inputFilePath, 'utf8');
+              const resolvedInputContent = await resolveInputs(inputContent, path.dirname(inputFilePath));
+              
+              const wrappedContent = `\n% --- START OF ${match[1]} ---\n${resolvedInputContent}\n% --- END OF ${match[1]} ---\n`;
+              lines[i] = lines[i].replace(match[0], wrappedContent);
+            } catch (err) {
+              console.error(`Could not resolve input file: ${inputFilePath}`);
+            }
           }
         }
-        return resolvedContent;
+        return lines.join('\n');
       };
 
       const finalConcatenatedContent = await resolveInputs(mainContent, templatePath);

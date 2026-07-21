@@ -46,7 +46,11 @@ RUN tlmgr install \
       collectbox \
       biber \
       biblatex \
-      csquotes
+      csquotes \
+      changepage \
+      biblatex-ieee \
+      biblatex-apa \
+      biblatex-apa6
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
