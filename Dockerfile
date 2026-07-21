@@ -8,7 +8,22 @@ RUN tlmgr install \
       enumitem \
       fancyhdr \
       babel-english \
-      hyphen-english
+      hyphen-english \
+      xifthen \
+      ifmtarg \
+      etoolbox \
+      setspace \
+      fontspec \
+      unicode-math \
+      fontawesome \
+      sourcesanspro \
+      tcolorbox \
+      environ \
+      parskip \
+      ragged2e \
+      geometry \
+      xcolor \
+      hyperref
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
@@ -22,5 +37,6 @@ COPY src ./src
 
 EXPOSE 3000
 ENV PORT=3000
+ENV logger_level=debug
 
 CMD ["node", "src/index.js"]

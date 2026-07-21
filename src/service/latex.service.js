@@ -8,10 +8,11 @@ const logger = require('../config/logger.config');
 const COMPILE_TIMEOUT_MS = 15000; // 15 seconds timeout
 const MAX_LOG_CHARS = 20000;
 
-function runLatexmk(dir) {
+function runLatexmk(dir, engine = 'pdflatex') {
   return new Promise((resolve) => {
+    const engineFlag = engine === 'xelatex' ? '-xelatex' : (engine === 'lualatex' ? '-lualatex' : '-pdf');
     const args = [
-      '-pdf',
+      engineFlag,
       '-interaction=nonstopmode',
       '-halt-on-error',
       '-no-shell-escape',
@@ -91,16 +92,38 @@ function extractErrors(log) {
 }
 
 class LatexService {
-  async compileLatex(texPayload) {
+  async compileLatex(texPayload, extraFiles = {}, engine = 'pdflatex', templateId = null) {
     const jobID = randomUUID();
     const dir = path.join(os.tmpdir(), 'latex-jobs', jobID);
 
     await fs.mkdir(dir, { recursive: true });
 
     try {
+      if (templateId) {
+        const templatePath = path.join(__dirname, '../templates', templateId);
+        try {
+          // fs.cp requires Node.js >= 16.7.0
+          await fs.cp(templatePath, dir, { recursive: true });
+        } catch (err) {
+          logger.warn(`Template ${templateId} not found or failed to copy: ${err.message}`);
+        }
+      }
+
       await fs.writeFile(path.join(dir, 'doc.tex'), texPayload, 'utf8');
 
-      const compileResult = await runLatexmk(dir);
+      if (extraFiles && typeof extraFiles === 'object') {
+        for (const [filename, content] of Object.entries(extraFiles)) {
+          // Prevent directory traversal attacks
+          const normalizedPath = path.normalize(filename);
+          if (!normalizedPath.startsWith('..') && !path.isAbsolute(normalizedPath)) {
+            const targetPath = path.join(dir, normalizedPath);
+            await fs.mkdir(path.dirname(targetPath), { recursive: true });
+            await fs.writeFile(targetPath, content, 'utf8');
+          }
+        }
+      }
+
+      const compileResult = await runLatexmk(dir, engine);
 
       if (compileResult.ok) {
         const pdfBuffer = await fs.readFile(compileResult.pdfPath);

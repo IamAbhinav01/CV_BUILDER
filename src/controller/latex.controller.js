@@ -3,7 +3,7 @@ const latexService = require('../service/latex.service');
 
 class LatexController {
   async compile(req, res) {
-    const { tex } = req.body || {};
+    const { tex, extraFiles, engine, templateId } = req.body || {};
 
     if (typeof tex !== 'string' || tex.trim().length === 0) {
       return res
@@ -17,7 +17,7 @@ class LatexController {
 
     try {
       logger.info('request reached handler');
-      const result = await latexService.compileLatex(tex);
+      const result = await latexService.compileLatex(tex, extraFiles, engine, templateId);
       logger.info('request sent to service');
       if (result.success) {
         res.setHeader('Content-Type', 'application/pdf');

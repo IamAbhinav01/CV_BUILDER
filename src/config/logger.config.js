@@ -3,7 +3,7 @@ const path = require('path');
 const { logger_level } = require('./server.config');
 const logger = pino(
   {
-    level: `${logger_level}`,
+    level: logger_level,
   },
   pino.transport({
     targets: [
