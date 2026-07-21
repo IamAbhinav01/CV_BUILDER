@@ -50,7 +50,8 @@ RUN tlmgr install \
       changepage \
       biblatex-ieee \
       biblatex-apa \
-      biblatex-apa6
+      biblatex-apa6 \
+      arydshln
 ## installing NodeJS
 
 ## we will be doing this later for live rendering of the  .tex
